@@ -10,6 +10,7 @@ public class PathGrid : MonoBehaviour {
     // public static List<Vector2> path = new List<Vector2> ();
     // public static List<Vector2> path2 = new List<Vector2> ();
     public static List<AStarVector> nodes = new List<AStarVector> ();
+    public static List<Vector2> BFSnodes = new List<Vector2> ();
 
     // Start is called before the first frame update
     void Start () {
@@ -26,10 +27,12 @@ public class PathGrid : MonoBehaviour {
                     if(hit.collider.GetComponent<WeightedObstacle>()){
                         var o = hit.collider.GetComponent<WeightedObstacle>();
                         nodes.Add (new AStarVector(new Vector2 (i + gridOffset, j + gridOffset), o.GetWeight()));
+                        BFSnodes.Add(new Vector2 (i + gridOffset, j + gridOffset));
                     }
                 }
                 if (!wall) {
                     nodes.Add (new AStarVector(new Vector2 (i + gridOffset, j + gridOffset), 1));
+                    BFSnodes.Add(new Vector2 (i + gridOffset, j + gridOffset));
                 }
             }
         }        

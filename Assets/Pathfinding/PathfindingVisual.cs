@@ -1,10 +1,16 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Pathfinding : MonoBehaviour {
+public class PathfindingVisual : MonoBehaviour
+{
+    public static PathfindingVisual instance;
 
+    private void Awake() {
+        instance = this;
+    }
+
+    const float WAITTIME = 0.15f;
     static Vector2[] cDirections = {
         Vector2.up,
         Vector2.right,
@@ -19,7 +25,12 @@ public class Pathfinding : MonoBehaviour {
     };
 
     #region BFS
-    public static List<Vector2> BreadthFirstSearch (Vector2 startPos, Vector2 endPos, List<Vector2> grid, int gridScale = 1, bool includeDiagonals = true, bool wallBlock = false) {
+    public static List<Vector2> BFSPath = new List<Vector2>();
+    public static List<Vector2> BFSSearched = new List<Vector2>();
+
+    public IEnumerator BreadthFirstSearch (Vector2 startPos, Vector2 endPos, List<Vector2> grid, int gridScale = 1, bool includeDiagonals = true, bool wallBlock = false) {
+        BFSPath.Clear();
+        BFSSearched.Clear();
         Dictionary<Vector2, BFSNode> nodes = new Dictionary<Vector2, BFSNode> ();
         Vector2 start = startPos;
         Vector2 end = endPos;
@@ -34,8 +45,9 @@ public class Pathfinding : MonoBehaviour {
 
         queue.Enqueue (nodes[start]);
 
-        while (queue.Count > 0 && !endFound) {
+        while (queue.Count > 0 && !endFound) {            
             //Debug.Log("running");
+            yield return new WaitForSeconds(WAITTIME);
             current = queue.Dequeue ();
 
             if (current == nodes[end]) {
@@ -44,16 +56,9 @@ public class Pathfinding : MonoBehaviour {
             // Explor Neighbors
             ExploreNeighbors (nodes, queue, current, gridScale, includeDiagonals, wallBlock);
             current.explored = true;
-            // PathGrid.path2 = GetPath (nodes, start, current.position);
+            BFSSearched.Add(current.position);
+            BFSPath = GetPath (nodes, start, current.position);
             // yield return new WaitForSeconds (0.05f);
-        }
-
-        if (endFound) {
-            List<Vector2> path = GetPath (nodes, start, end);
-            return path;
-        } else {
-            Debug.LogWarning ("No Valid Paths");
-            return new List<Vector2> ();
         }
     }
 
@@ -89,7 +94,7 @@ public class Pathfinding : MonoBehaviour {
 
     private static void ExploreNeighbors (Dictionary<Vector2, BFSNode> nodes, Queue<BFSNode> queue, BFSNode current, int gridScale, bool includeDiagonals, bool wallBlock) {
         bool[] found = new bool[4];
-        for (int i = 0; i < cDirections.Length; i++) {
+        for (int i = 0; i < cDirections.Length; i++) {    
             Vector2 neighborCoordinate = current.position + cDirections[i] * gridScale;
             if (nodes.ContainsKey (neighborCoordinate) && !wallBlocking(current.position, neighborCoordinate, wallBlock)) {
                 found[i] = true;
@@ -123,7 +128,7 @@ public class Pathfinding : MonoBehaviour {
         //Debug.Log(i);
         return (found[i] && found[j]);
     }
-    
+
     static bool wallBlocking (Vector2 start, Vector2 end, bool wallBlock) {
         if (wallBlock) {
             var hit = Physics2D.Linecast (start, end);
@@ -139,7 +144,11 @@ public class Pathfinding : MonoBehaviour {
 
     #endregion
     #region Astar
-    public static List<Vector2> AStar (Vector2 startPos, Vector2 endPos, List<Vector2> grid, bool includeDiagonals = true, bool checkForWalls = false) {
+
+    public static List<Vector2> AStarPath = new List<Vector2>();
+    public static List<Vector2> AStarSearched = new List<Vector2>();
+
+    public void AStar (Vector2 startPos, Vector2 endPos, List<Vector2> grid, bool includeDiagonals = true, bool checkForWalls = false) {
 
         Dictionary<Vector2, AStarNode> allNodes = new Dictionary<Vector2, AStarNode> ();
         Vector2 start = startPos;
@@ -162,9 +171,9 @@ public class Pathfinding : MonoBehaviour {
             }
         }
 
-        return AStarAlgorithm (includeDiagonals, allNodes, start, end);
+        StartCoroutine(AStarAlgorithm (includeDiagonals, allNodes, start, end));
     }
-    public static List<Vector2> AStar (Vector2 startPos, Vector2 endPos, List<AStarVector> grid, bool includeDiagonals = true, bool checkForWalls = false) {
+    public void AStar (Vector2 startPos, Vector2 endPos, List<AStarVector> grid, bool includeDiagonals = true, bool checkForWalls = false) {
 
         Dictionary<Vector2, AStarNode> allNodes = new Dictionary<Vector2, AStarNode> ();
         Vector2 start = startPos;
@@ -189,10 +198,10 @@ public class Pathfinding : MonoBehaviour {
             }
         }
 
-        return AStarAlgorithm (includeDiagonals, allNodes, start, end);
+        StartCoroutine(AStarAlgorithm (includeDiagonals, allNodes, start, end));
     }
 
-    private static List<Vector2> AStarAlgorithm (bool includeDiagonals, Dictionary<Vector2, AStarNode> allNodes, Vector2 start, Vector2 end) {
+    private IEnumerator AStarAlgorithm (bool includeDiagonals, Dictionary<Vector2, AStarNode> allNodes, Vector2 start, Vector2 end) {
         List<AStarNode> openSet = new List<AStarNode> ();
         Dictionary<Vector2, AStarNode> closedSet = new Dictionary<Vector2, AStarNode> ();
         bool endFound = false;
@@ -201,7 +210,8 @@ public class Pathfinding : MonoBehaviour {
 
         openSet.Add (allNodes[start]);
         while (openSet.Count > 0) {
-            // Find best guess f            
+            // Find best guess f   
+            yield return new WaitForSeconds(WAITTIME);
             int winner = 0;
             for (int i = 0; i < openSet.Count; i++) {
                 if (openSet[i].f < openSet[winner].f) {
@@ -246,20 +256,18 @@ public class Pathfinding : MonoBehaviour {
                     }
                 }
             }
-            // TEST STUFF 
-            // List<Vector2> path = new List<Vector2> ();
-            // var temp = current;
-            // path.Add (temp.pos);
-            // while (temp.parent != null) {
-            //     path.Add (temp.parent.pos);
-            //     Debug.Log (temp.pos + " f: " + temp.f);
-            //     temp = temp.parent;
-            // }
-            // PathGrid.path = path;
+            List<Vector2> path = new List<Vector2> ();
+            var temp = current;
+            path.Add (temp.pos);
+            while (temp.parent != null) {
+                path.Add (temp.parent.pos);
+                temp = temp.parent;
+            }
+            AStarPath = path;
+            AStarSearched.Add(current.pos);
         }
         if (!endFound) {
             Debug.Log ("No path found");
-            return new List<Vector2> ();
         } else {
             List<Vector2> path = new List<Vector2> ();
             var temp = current;
@@ -268,8 +276,8 @@ public class Pathfinding : MonoBehaviour {
                 path.Add (temp.parent.pos);
                 temp = temp.parent;
             }
-            path.Reverse ();
-            return path;
+            AStarPath = path;
+            AStarSearched.Add(current.pos);
         }
     }
 
@@ -282,82 +290,4 @@ public class Pathfinding : MonoBehaviour {
     }
 
     #endregion
-}
-public class BFSNode {
-    public BFSNode parent = null;
-    public bool explored = false;
-    public bool start = false;
-    public bool end = false;
-    public Vector2 position;
-
-    public BFSNode (Vector2 position) {
-        this.position = position;
-    }
-}
-public class AStarVector {
-    public Vector2 pos;
-    public float weight;
-
-    public AStarVector (Vector2 pos, float weight = 1) {
-        this.pos = pos;
-        this.weight = weight;
-    }
-}
-public class AStarNode {
-    public Vector2 pos;
-    public float w = 1;
-    public float f = 0;
-    public float g = 0;
-    public float h = 0;
-    public List<AStarNode> neighbors = new List<AStarNode> ();
-    public AStarNode parent = null;
-    bool wallBlock;
-
-    public AStarNode (AStarVector weightedVector, bool wallBlock) {
-        this.pos = weightedVector.pos;
-        this.w = weightedVector.weight;
-        this.wallBlock = wallBlock;
-        // this.f = f;
-        // this.g = g;
-        // this.g = h;
-    }
-
-    public void AddNeighbors (Dictionary<Vector2, AStarNode> allNodes, Vector2[] directions, Vector2[] cDirections, bool includeDiagonals) {
-        bool[] found = new bool[4];
-        for (int i = 0; i < cDirections.Length; i++) {
-            Vector2 neighborCoordinate = pos + cDirections[i];
-            if (allNodes.ContainsKey (neighborCoordinate) && !wallBlocking(pos, neighborCoordinate)) {
-                found[i] = true;
-                neighbors.Add (allNodes[neighborCoordinate]);
-            }
-        }
-        if (includeDiagonals) {
-            for (int i = 0; i < directions.Length; i++) {
-                Vector2 neighborCoordinate = pos + directions[i];
-                if (allNodes.ContainsKey (neighborCoordinate) && DiagonalCheck (i, found) && !wallBlocking(pos, neighborCoordinate)) {
-                    found[i] = true;
-                    neighbors.Add (allNodes[neighborCoordinate]);
-                }
-            }
-        }
-    }
-
-    bool wallBlocking (Vector2 start, Vector2 end) {
-        if (wallBlock) {
-            var hit = Physics2D.Linecast (start, end);
-            if (hit) {
-                if(hit.collider.GetComponent<Obstacle>())
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    bool DiagonalCheck (int i, bool[] found) {
-        int j = (i >= 3) ? 0 : i + 1;
-        //Debug.Log(i);
-        return (found[i] && found[j]);
-    }
 }
